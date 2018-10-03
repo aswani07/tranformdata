@@ -24,7 +24,7 @@ output application/xml
 		email: payload.emailId,
 		ssn: payload.SSN,
 		sizeOfHashMap : sizeOf(payload[0]),
-		age: attributes.headers
+		age: attributes.headers.age
 		
 	}
 }]]></ee:set-payload>

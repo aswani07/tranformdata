@@ -19,11 +19,11 @@ output application/xml
 {
 	root: {
 		customerID: payload.customerId,
-		name: (payload.firstName default "") ++  (payload.lastName default ""),
+		name: (payload.firstName default "") ++ " "++  (payload.lastName default ""),
 		phone: payload.phoneNumber,
 		email: payload.emailId,
 		ssn: payload.SSN,
-		sizeOfHashMap : sizeOf(payload[0]),
+		sizeOfHashMap : sizeOf(payload),
 		age: attributes.headers.age
 		
 	}

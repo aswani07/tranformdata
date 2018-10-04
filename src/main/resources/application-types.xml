@@ -2,16 +2,15 @@
 <types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
   <types:catalog>
     <types:type name="customer_object_example" format="json">
-      <types:shape format="weave" example="examples/customer_example.json"><![CDATA[%dw 2.0
+      <types:shape format="weave" example="examples/customer_example-1.json"><![CDATA[%dw 2.0
 type customer_object_example = {|
   customerId: String, 
-  lastName: String, 
-  firstName: String, 
+  name: String, 
   phoneNumber: String, 
   emailId: String, 
   SSN: String
 |} {"MetadataFormat": "json",
-"example": "{\"customerId\":\"1\",\"lastName\":\"Neerukonda\",\"firstName\":\"Aswani\",\"phoneNumber\":\"8328561368\",\"emailId\":\"aswanineerukonda@gmail.com\",\"SSN\":\"123-45-6789\"}"}
+"example": "{\"customerId\":\"1\",\"name\":\"Neerukonda Aswani\",\"phoneNumber\":\"8328561368\",\"emailId\":\"aswanineerukonda@gmail.com\",\"SSN\":\"123-45-6789\"}"}
 
 ]]></types:shape>
     </types:type>
@@ -29,6 +28,15 @@ type customer_object_example = {|
       <types:output-event>
         <types:message>
           <types:payload type="customer_xml_example"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#3ecfed19-f91e-4971-9fae-2c75b67384ae">
+    <types:processor-declaration>
+      <types:output-event>
+        <types:message>
+          <types:payload type="customer_object_example"/>
         </types:message>
       </types:output-event>
     </types:processor-declaration>

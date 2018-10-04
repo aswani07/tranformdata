@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="2433a069-1793-4483-80f2-1418dc6ea507" basePath="/api" >
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="ad94d85d-8db5-4122-aadc-1555a84a64a0" >
+        <db:my-sql-connection host="training4quintrix.clfl8y3ktaxf.us-west-2.rds.amazonaws.com" port="3306" user="root4training" password="root4trainingp" database="training_an" />
+    </db:config>
 	<flow name="tranformdataFlow" doc:id="ae1d42f7-12d1-4871-ab54-5ebdecb61a33" >
 		<http:listener doc:name="Listener" doc:id="f1ff1372-cd25-43e0-ae7f-593941d641de" config-ref="HTTP_Listener_config" path="/hello"/>
 		<logger level="INFO" doc:name="Logger" doc:id="d5668d39-19a8-4033-ab61-ebe16d10c29a" message="request received "/>
@@ -30,5 +34,97 @@ output application/xml
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+	</flow>
+	<flow name="getCustomersFlow" doc:id="e0d4e026-f82b-4bf9-b4e7-fd4678934be4" >
+		<http:listener doc:name="Listener" doc:id="51b1dfb4-2610-462f-8f68-9d6ecb8667a4" config-ref="HTTP_Listener_config" path="/getCustomers"/>
+		<db:select doc:name="Select" doc:id="a095eb1d-77f8-4a1e-a7f3-c2e56ceb728d" config-ref="Database_Config">
+			<db:sql >select * from training_an.customer;</db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="3ecfed19-f91e-4971-9fae-2c75b67384ae" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	customerId: payload[0].customer_id as String,
+	name: payload[0].customer_lastName,
+	phoneNumber: payload[0].customer_phoneNumber default "",
+	emailId: payload[0].customer_emailId default "",
+	SSN: payload[0].customer_SSN default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="2e9b4921-fcdb-4b03-84f4-f2dd6eca9ee4" message="#[payload]"/>
+	</flow>
+	<flow name="insertCustomersFlow" doc:id="4c712c3d-160c-4f85-be9c-c3855319db1b" >
+		<http:listener doc:name="Listener" doc:id="ae648f45-e99f-453f-8619-b34e4f574ea2" config-ref="HTTP_Listener_config" path="/insertCustomer"/>
+		<db:insert doc:name="Insert" doc:id="e61715c5-d59b-4a4e-a66d-17655d9f9fcf" config-ref="Database_Config">
+			<db:sql >  INSERT INTO training_an.customer ( customer_id, customer_lastName, customer_firstName,customer_phoneNumber,customer_emailId,customer_SSN )
+   VALUES
+   ( :id,:lastname,:firstname ,:phonenumber,:email,:ssn);
+   </db:sql>
+			<db:input-parameters ><![CDATA[#[{
+ id : payload.customerId,
+ lastname : payload.lastName,
+ firstname : payload.firstName,
+ phonenumber : payload.phoneNumber,
+ email : payload.emailId,
+ ssn : payload.SSN
+  }]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="615b9300-4b05-40ae-bda8-27a708b23ec7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	result:payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="c11157ec-0b6f-47d7-81df-4e365bec9acc" message="#[payload]"/>
+	</flow>
+	<flow name="updateCustomersFlow" doc:id="868d7402-43af-4628-b8a4-8508d8727089" >
+		<http:listener doc:name="Listener" doc:id="cb55529e-4d6e-49c1-b204-784752ca0589" config-ref="HTTP_Listener_config" path="/updateCustomer"/>
+		<db:update doc:name="Update" doc:id="04aaa612-d009-44e6-8df9-3d81109ef7c7" config-ref="Database_Config">
+			<db:sql >UPDATE training_an.customer SET customer_lastName = :lastname, customer_phoneNumber = :phonenumber Where customer_id = :id;</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+id : payload.customerId,
+phonenumber : payload.phoneNumber,
+lastname: payload.lastName
+
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="64dae611-45e9-499e-95c0-629c9372e402" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	result:payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="f206d971-09ea-4e03-aab2-130793e5a587" />
+	</flow>
+	<flow name="deleteCustomersFlow" doc:id="3b73cb91-b115-469d-8506-e139351f77f5" >
+		<http:listener doc:name="Listener" doc:id="d5104a56-1bd2-4a0c-9efc-bc1d89b6f536" config-ref="HTTP_Listener_config" path="/deleteCustomer"/>
+		<db:delete doc:name="Delete" doc:id="27be36e6-2dfd-4d6c-af8c-1a5faa1b164a" config-ref="Database_Config">
+			<db:sql >DELETE FROM training_an.customer where customer_id= :id;</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+id : payload.customerId
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="b1e8c320-7e35-4b17-beb8-7c3573b0b161" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	result:payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="e4125567-059b-494c-843f-28567199e23d" message="#[payload]"/>
 	</flow>
 </mule>

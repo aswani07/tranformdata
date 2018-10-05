@@ -36,9 +36,12 @@ type customer_object_example = {|
     <types:processor-declaration>
       <types:output-event>
         <types:message>
-          <types:payload type="customer_object_example"/>
+          <types:payload type="customer_object_example[]"/>
         </types:message>
       </types:output-event>
     </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#64dae611-45e9-499e-95c0-629c9372e402">
+    <types:processor-declaration/>
   </types:enrichment>
 </types:mule>

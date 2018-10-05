@@ -35,6 +35,25 @@ output application/xml
 			</ee:message>
 		</ee:transform>
 	</flow>
+	<flow name="tranformdataFlow1" doc:id="c2713ac5-0983-4c5e-a0d6-7ea40c6857a6" >
+		<ee:transform doc:name="Transform Message" doc:id="8ef61368-916d-4a14-a224-fe03138f20ff" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var a = [1,2,3,4,5]
+var obj= [{"title":"harry", "author":"potter"}]
+---
+
+//obj map {
+//	"$$":$
+//}
+
+{
+	name: upper("mulesoft")
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
 	<flow name="getCustomersFlow" doc:id="e0d4e026-f82b-4bf9-b4e7-fd4678934be4" >
 		<http:listener doc:name="Listener" doc:id="51b1dfb4-2610-462f-8f68-9d6ecb8667a4" config-ref="HTTP_Listener_config" path="/getCustomers"/>
 		<db:select doc:name="Select" doc:id="a095eb1d-77f8-4a1e-a7f3-c2e56ceb728d" config-ref="Database_Config">
@@ -45,12 +64,13 @@ output application/xml
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-{
-	customerId: payload[0].customer_id as String,
-	name: payload[0].customer_lastName,
-	phoneNumber: payload[0].customer_phoneNumber default "",
-	emailId: payload[0].customer_emailId default "",
-	SSN: payload[0].customer_SSN default ""
+payload map  {
+	customerId: $.customer_id as String,
+	name: upper(($.customer_firstName default "") ++ $.customer_lastName),
+	phoneNumber: $.customer_phoneNumber default "",
+	emailId:$.customer_emailId default "",
+	SSN: $.customer_SSN default "",
+	indexOfRecord : $$
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
@@ -58,12 +78,15 @@ output application/json
 	</flow>
 	<flow name="insertCustomersFlow" doc:id="4c712c3d-160c-4f85-be9c-c3855319db1b" >
 		<http:listener doc:name="Listener" doc:id="ae648f45-e99f-453f-8619-b34e4f574ea2" config-ref="HTTP_Listener_config" path="/insertCustomer"/>
-		<db:insert doc:name="Insert" doc:id="e61715c5-d59b-4a4e-a66d-17655d9f9fcf" config-ref="Database_Config">
-			<db:sql >  INSERT INTO training_an.customer ( customer_id, customer_lastName, customer_firstName,customer_phoneNumber,customer_emailId,customer_SSN )
+		<logger level="INFO" doc:name="Logger" doc:id="88a55d8b-8af0-4488-8856-2908978da671" message="before for each"/>
+		<foreach doc:name="For Each" doc:id="8926eb28-ee1a-493d-aae2-e4cfa890a5ab" collection="#[payload]">
+			<logger level="INFO" doc:name="Logger" doc:id="2505e83c-413e-49a1-a78c-ae6241843684" message="inside for each :counter :#[vars.counter]"/>
+			<db:insert doc:name="Insert" doc:id="e61715c5-d59b-4a4e-a66d-17655d9f9fcf" config-ref="Database_Config">
+			<db:sql>  INSERT INTO training_an.customer ( customer_id, customer_lastName, customer_firstName,customer_phoneNumber,customer_emailId,customer_SSN )
    VALUES
    ( :id,:lastname,:firstname ,:phonenumber,:email,:ssn);
    </db:sql>
-			<db:input-parameters ><![CDATA[#[{
+			<db:input-parameters><![CDATA[#[{
  id : payload.customerId,
  lastname : payload.lastName,
  firstname : payload.firstName,
@@ -72,6 +95,7 @@ output application/json
  ssn : payload.SSN
   }]]]></db:input-parameters>
 		</db:insert>
+		</foreach>
 		<ee:transform doc:name="Transform Message" doc:id="615b9300-4b05-40ae-bda8-27a708b23ec7" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -86,15 +110,15 @@ output application/json
 	</flow>
 	<flow name="updateCustomersFlow" doc:id="868d7402-43af-4628-b8a4-8508d8727089" >
 		<http:listener doc:name="Listener" doc:id="cb55529e-4d6e-49c1-b204-784752ca0589" config-ref="HTTP_Listener_config" path="/updateCustomer"/>
-		<db:update doc:name="Update" doc:id="04aaa612-d009-44e6-8df9-3d81109ef7c7" config-ref="Database_Config">
-			<db:sql >UPDATE training_an.customer SET customer_lastName = :lastname, customer_phoneNumber = :phonenumber Where customer_id = :id;</db:sql>
-			<db:input-parameters ><![CDATA[#[{
-id : payload.customerId,
+		<foreach doc:name="For Each" doc:id="9b13fd04-c4b5-4672-8d75-fc4999cbb194" >
+			<db:update doc:name="Update" doc:id="04aaa612-d009-44e6-8df9-3d81109ef7c7" config-ref="Database_Config">
+			<db:sql >UPDATE training_an.customer SET customer_lastName = :lastname Where customer_phoneNumber= :phonenumber;</db:sql>
+				<db:input-parameters><![CDATA[#[{
 phonenumber : payload.phoneNumber,
 lastname: payload.lastName
-
 }]]]></db:input-parameters>
 		</db:update>
+		</foreach>
 		<ee:transform doc:name="Transform Message" doc:id="64dae611-45e9-499e-95c0-629c9372e402" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -110,9 +134,9 @@ output application/json
 	<flow name="deleteCustomersFlow" doc:id="3b73cb91-b115-469d-8506-e139351f77f5" >
 		<http:listener doc:name="Listener" doc:id="d5104a56-1bd2-4a0c-9efc-bc1d89b6f536" config-ref="HTTP_Listener_config" path="/deleteCustomer"/>
 		<db:delete doc:name="Delete" doc:id="27be36e6-2dfd-4d6c-af8c-1a5faa1b164a" config-ref="Database_Config">
-			<db:sql >DELETE FROM training_an.customer where customer_id= :id;</db:sql>
-			<db:input-parameters ><![CDATA[#[{
-id : payload.customerId
+			<db:sql>DELETE FROM training_an.customer where customer_phoneNumber= :phonenumber;</db:sql>
+				<db:input-parameters><![CDATA[#[{
+phonenumber : payload.phoneNumber
 }]]]></db:input-parameters>
 		</db:delete>
 		<ee:transform doc:name="Transform Message" doc:id="b1e8c320-7e35-4b17-beb8-7c3573b0b161" >
